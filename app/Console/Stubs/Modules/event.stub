@@ -1,28 +1,30 @@
 <?php
 
-namespace $NAMESPACE$;
+namespace $MODULE_NAMESPACE$\$STUDLY_NAME$\Providers;
 
-use App\Abstracts\Event;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as Provider;
 
-class $CLASS$ extends Event
+class Event extends Provider
 {
     /**
-     * Create a new event instance.
+     * Determine if events and listeners should be automatically discovered.
      *
-     * @return void
+     * @return bool
      */
-    public function __construct()
+    public function shouldDiscoverEvents()
     {
-        //
+        return true;
     }
 
     /**
-     * Get the channels the event should be broadcast on.
+     * Get the listener directories that should be used to discover events.
      *
      * @return array
      */
-    public function broadcastOn()
+    protected function discoverEventsWithin()
     {
-        return [];
+        return [
+            __DIR__ . '/../Listeners',
+        ];
     }
 }

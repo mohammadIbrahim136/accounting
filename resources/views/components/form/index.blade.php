@@ -1,26 +1,22 @@
-<form
-    method="POST"
-    action="{{ $action }}"
-    @if ($class)
-    class="{{ $class }}"
+<div {{ ((! $attributes->has('override')) || ($attributes->has('override') && ! in_array('class', explode(',', $attributes->get('override'))))) ? $attributes->merge(['class' => 'mb-14']) : $attributes }}>
+    @if (!empty($head) && $head->isNotEmpty())
+        {!! $head !!}
     @endif
-    @if ($role)
-    role="form"
+
+    @if (! empty($body) && $body->isNotEmpty())
+        <div
+            @class([
+                'grid my-3.5',
+                $spacingVertical,
+                $spacingHorizontal,
+                $columnNumber,
+            ])
+        >
+            {!! $body !!}
+        </div>
     @endif
-    @if ($novalidate)
-    novalidate="{{ $novalidate }}"
+
+    @if (! empty($foot) && $foot->isNotEmpty())
+        {!! $foot !!}
     @endif
-    @if ($enctype)
-    enctype="{{ $enctype }}"
-    @endif
-    @if ($acceptCharset)
-    accept-charset="{{ $acceptCharset }}"
-    @endif
-    @submit.prevent="{{ $submit }}"
-    @keydown="form.errors ? form.errors.clear($event.target.name): null"
-    {{ $attributes }}
->
-    @csrf
-    @method($method)
-    {{ $slot }}
-</form>
+</div>

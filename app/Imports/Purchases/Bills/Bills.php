@@ -1,26 +1,53 @@
 <?php
 
-namespace App\Imports\Purchases\Bills;
+namespace App\Imports\Purchases\Bills\Sheets;
 
-use App\Abstracts\ImportMultipleSheets;
-use App\Imports\Purchases\Bills\Sheets\Bills as Base;
-use App\Imports\Purchases\Bills\Sheets\BillItems;
-use App\Imports\Purchases\Bills\Sheets\BillItemTaxes;
-use App\Imports\Purchases\Bills\Sheets\BillHistories;
-use App\Imports\Purchases\Bills\Sheets\BillTotals;
-use App\Imports\Purchases\Bills\Sheets\BillTransactions;
+use App\Abstracts\Import;
+use App\Http\Requests\Document\Document as Request;
+use App\Models\Document\Document as Model;
+use Illuminate\Support\Str;
 
-class Bills extends ImportMultipleSheets
+class Bills extends Import
 {
-    public function sheets(): array
+    public $request_class = Request::class;
+
+    public function model(array $row)
     {
-        return [
-            'bills' => new Base(),
-            'bill_items' => new BillItems(),
-            'bill_item_taxes' => new BillItemTaxes(),
-            'bill_histories' => new BillHistories(),
-            'bill_totals' => new BillTotals(),
-            'bill_transactions' => new BillTransactions(),
-        ];
+        return new Model($row);
+    }
+
+    public function map($row): array
+    {
+        if ($this->isEmpty($row, 'bill_number')) {
+            return [];
+        }
+
+        $row['bill_number'] = (string) $row['bill_number'];
+
+        $row = parent::map($row);
+
+        $country = array_search($row['contact_country'], trans('countries'));
+
+        $row['document_number'] = $row['bill_number'];
+        $row['issued_at'] = $row['billed_at'];
+        $row['category_id'] = $this->getCategoryId($row, 'expense');
+        $row['contact_id'] = $this->getContactId($row, 'vendor');
+        $row['currency_code'] = $this->getCurrencyCode($row);
+        $row['type'] = Model::BILL_TYPE;
+        $row['contact_country'] = !empty($country) ? $country : null;
+        $row['parent_id'] = $this->getParentId($row) ?? 0;
+
+        return $row;
+    }
+
+    public function prepareRules(array $rules): array
+    {
+        $rules['bill_number'] = Str::replaceFirst('unique:documents,NULL', 'unique:documents,document_number', $rules['document_number']);
+        $rules['billed_at'] = $rules['issued_at'];
+        $rules['currency_rate'] = 'required|gt:0';
+
+        unset($rules['document_number'], $rules['issued_at'], $rules['type']);
+
+        return $rules;
     }
 }

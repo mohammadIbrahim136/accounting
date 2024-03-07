@@ -1,3 +1,1 @@
-@push('scripts_start')
-    <script src="{{ asset($source) }}"></script>
-@endpush
+<x-script :alias="$alias" :folder="$folder" :file="$file" />

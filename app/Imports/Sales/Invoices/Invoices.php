@@ -1,26 +1,53 @@
 <?php
 
-namespace App\Imports\Sales\Invoices;
+namespace App\Imports\Sales\Invoices\Sheets;
 
-use App\Abstracts\ImportMultipleSheets;
-use App\Imports\Sales\Invoices\Sheets\Invoices as Base;
-use App\Imports\Sales\Invoices\Sheets\InvoiceItems;
-use App\Imports\Sales\Invoices\Sheets\InvoiceItemTaxes;
-use App\Imports\Sales\Invoices\Sheets\InvoiceHistories;
-use App\Imports\Sales\Invoices\Sheets\InvoiceTotals;
-use App\Imports\Sales\Invoices\Sheets\InvoiceTransactions;
+use App\Abstracts\Import;
+use App\Http\Requests\Document\Document as Request;
+use App\Models\Document\Document as Model;
+use Illuminate\Support\Str;
 
-class Invoices extends ImportMultipleSheets
+class Invoices extends Import
 {
-    public function sheets(): array
+    public $request_class = Request::class;
+
+    public function model(array $row)
     {
-        return [
-            'invoices' => new Base(),
-            'invoice_items' => new InvoiceItems(),
-            'invoice_item_taxes' => new InvoiceItemTaxes(),
-            'invoice_histories' => new InvoiceHistories(),
-            'invoice_totals' => new InvoiceTotals(),
-            'invoice_transactions' => new InvoiceTransactions(),
-        ];
+        return new Model($row);
+    }
+
+    public function map($row): array
+    {
+        if ($this->isEmpty($row, 'invoice_number')) {
+            return [];
+        }
+
+        $row['invoice_number'] = (string) $row['invoice_number'];
+
+        $row = parent::map($row);
+
+        $country = array_search($row['contact_country'], trans('countries'));
+
+        $row['document_number'] = $row['invoice_number'];
+        $row['issued_at'] = $row['invoiced_at'];
+        $row['category_id'] = $this->getCategoryId($row, 'income');
+        $row['contact_id'] = $this->getContactId($row, 'customer');
+        $row['currency_code'] = $this->getCurrencyCode($row);
+        $row['type'] = Model::INVOICE_TYPE;
+        $row['contact_country'] = !empty($country) ? $country : null;
+        $row['parent_id'] = $this->getParentId($row) ?? 0;
+
+        return $row;
+    }
+
+    public function prepareRules(array $rules): array
+    {
+        $rules['invoice_number'] = Str::replaceFirst('unique:documents,NULL', 'unique:documents,document_number', $rules['document_number']);
+        $rules['invoiced_at'] = $rules['issued_at'];
+        $rules['currency_rate'] = 'required|gt:0';
+
+        unset($rules['document_number'], $rules['issued_at'], $rules['type']);
+
+        return $rules;
     }
 }

@@ -1,26 +1,52 @@
 <?php
 
-namespace App\Imports\Sales\RecurringInvoices;
+namespace App\Imports\Sales\RecurringInvoices\Sheets;
 
-use App\Abstracts\ImportMultipleSheets;
-use App\Imports\Sales\RecurringInvoices\Sheets\Recurring;
-use App\Imports\Sales\RecurringInvoices\Sheets\RecurringInvoices as Base;
-use App\Imports\Sales\RecurringInvoices\Sheets\RecurringInvoiceItems;
-use App\Imports\Sales\RecurringInvoices\Sheets\RecurringInvoiceItemTaxes;
-use App\Imports\Sales\RecurringInvoices\Sheets\RecurringInvoiceHistories;
-use App\Imports\Sales\RecurringInvoices\Sheets\RecurringInvoiceTotals;
+use App\Abstracts\Import;
+use App\Http\Requests\Document\Document as Request;
+use App\Models\Document\Document as Model;
+use Illuminate\Support\Str;
 
-class RecurringInvoices extends ImportMultipleSheets
+class RecurringInvoices extends Import
 {
-    public function sheets(): array
+    public $request_class = Request::class;
+
+    public function model(array $row)
     {
-        return [
-            'recurring_invoices' => new Base(),
-            'recurring_invoice_items' => new RecurringInvoiceItems(),
-            'recurring_invoice_item_taxes' => new RecurringInvoiceItemTaxes(),
-            'recurring_invoice_histories' => new RecurringInvoiceHistories(),
-            'recurring_invoice_totals' => new RecurringInvoiceTotals(),
-            'recurring' => new Recurring(),
-        ];
+        return new Model($row);
+    }
+
+    public function map($row): array
+    {
+        if ($this->isEmpty($row, 'invoice_number')) {
+            return [];
+        }
+
+        $row['invoice_number'] = (string) $row['invoice_number'];
+
+        $row = parent::map($row);
+
+        $country = array_search($row['contact_country'], trans('countries'));
+
+        $row['document_number'] = $row['invoice_number'];
+        $row['issued_at'] = $row['invoiced_at'];
+        $row['category_id'] = $this->getCategoryId($row, 'income');
+        $row['contact_id'] = $this->getContactId($row, 'customer');
+        $row['currency_code'] = $this->getCurrencyCode($row);
+        $row['type'] = Model::INVOICE_RECURRING_TYPE;
+        $row['contact_country'] = !empty($country) ? $country : null;
+
+        return $row;
+    }
+
+    public function prepareRules(array $rules): array
+    {
+        $rules['invoice_number'] = Str::replaceFirst('unique:documents,NULL', 'unique:documents,document_number', $rules['document_number']);
+        $rules['invoiced_at'] = $rules['issued_at'];
+        $rules['currency_rate'] = 'required|gt:0';
+
+        unset($rules['document_number'], $rules['issued_at'], $rules['type']);
+
+        return $rules;
     }
 }

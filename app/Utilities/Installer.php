@@ -187,7 +187,7 @@ class Installer
             'database'  => $database,
             'username'  => $username,
             'password'  => $password,
-            'driver'    => $connection = config('database.default', 'mysql'),
+            'driver'    => $connection = config('database.default', 'pgsql'),
             'charset'   => config("database.connections.$connection.charset", 'utf8mb4'),
         ]);
 
@@ -217,7 +217,7 @@ class Installer
             'DB_PREFIX'     =>  $prefix,
         ]);
 
-        $con = config('database.default', 'mysql');
+        $con = config('database.default', 'pgsql');
 
         // Change current connection
         $db = Config::get('database.connections.' . $con);

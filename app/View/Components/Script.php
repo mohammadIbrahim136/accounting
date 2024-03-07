@@ -1,11 +1,22 @@
 <?php
 
-namespace App\View\Components;
+namespace App\View\Components\Transfers;
 
 use App\Abstracts\View\Component;
+use App\Traits\ViewComponents;
 
 class Script extends Component
 {
+    use ViewComponents;
+
+    public const OBJECT_TYPE = 'transfer';
+    public const DEFAULT_TYPE = 'transfer';
+    public const DEFAULT_PLURAL_TYPE = 'transfers';
+
+    public $model;
+
+    public $transfer;
+
     /** @var string */
     public $alias;
 
@@ -15,22 +26,21 @@ class Script extends Component
     /** @var string */
     public $file;
 
-    /** @var string */
-    public $source;
-
     /**
      * Create a new component instance.
      *
      * @return void
      */
     public function __construct(
-        string $alias = 'core', string $folder = '', string $file = ''
+        $model = false, $transfer = false,
+        string $alias = '', string $folder = '', string $file = ''
     ) {
-        $this->alias = $alias;
-        $this->folder = $folder;
-        $this->file = $file;
+        $this->model = ! empty($model) ? $model : $transfer;
+        $this->transfer = ! empty($model) ? $model : $transfer;
 
-        $this->source = $this->getSource($alias, $folder, $file);
+        $this->alias = $this->getAlias($type, $alias);
+        $this->folder = $this->getScriptFolder($type, $folder);
+        $this->file = $this->getScriptFile($type, $file);
     }
 
     /**
@@ -40,33 +50,6 @@ class Script extends Component
      */
     public function render()
     {
-        return view('components.script');
-    }
-
-    protected function getSource($alias, $folder, $file)
-    {
-        $path = 'public/js/';
-        $version = version('short');
-
-        if ($alias != 'core') {
-            try {
-                $module = module($alias);
-
-                if ($module) {
-                    $path = 'modules/' . $module->getStudlyName() . '/Resources/assets/js/';
-                    $version = module_version($alias);
-                }
-            } catch (\Exception $e) {
-
-            }
-        }
-
-        if (! empty($folder)) {
-            $path .= $folder . '/';
-        }
-
-        $path .= $file . '.min.js?v=' . $version;
-
-        return $path;
+        return view('components.transfers.script');
     }
 }

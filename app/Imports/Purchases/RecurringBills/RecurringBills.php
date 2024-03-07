@@ -1,26 +1,52 @@
 <?php
 
-namespace App\Imports\Purchases\RecurringBills;
+namespace App\Imports\Purchases\RecurringBills\Sheets;
 
-use App\Abstracts\ImportMultipleSheets;
-use App\Imports\Purchases\RecurringBills\Sheets\Recurring;
-use App\Imports\Purchases\RecurringBills\Sheets\RecurringBills as Base;
-use App\Imports\Purchases\RecurringBills\Sheets\RecurringBillItems;
-use App\Imports\Purchases\RecurringBills\Sheets\RecurringBillItemTaxes;
-use App\Imports\Purchases\RecurringBills\Sheets\RecurringBillHistories;
-use App\Imports\Purchases\RecurringBills\Sheets\RecurringBillTotals;
+use App\Abstracts\Import;
+use App\Http\Requests\Document\Document as Request;
+use App\Models\Document\Document as Model;
+use Illuminate\Support\Str;
 
-class RecurringBills extends ImportMultipleSheets
+class RecurringBills extends Import
 {
-    public function sheets(): array
+    public $request_class = Request::class;
+
+    public function model(array $row)
     {
-        return [
-            'recurring_bills' => new Base(),
-            'recurring_bill_items' => new RecurringBillItems(),
-            'recurring_bill_item_taxes' => new RecurringBillItemTaxes(),
-            'recurring_bill_histories' => new RecurringBillHistories(),
-            'recurring_bill_totals' => new RecurringBillTotals(),
-            'recurring' => new Recurring(),
-        ];
+        return new Model($row);
+    }
+
+    public function map($row): array
+    {
+        if ($this->isEmpty($row, 'bill_number')) {
+            return [];
+        }
+
+        $row['bill_number'] = (string) $row['bill_number'];
+
+        $row = parent::map($row);
+
+        $country = array_search($row['contact_country'], trans('countries'));
+
+        $row['document_number'] = $row['bill_number'];
+        $row['issued_at'] = $row['billed_at'];
+        $row['category_id'] = $this->getCategoryId($row, 'expense');
+        $row['contact_id'] = $this->getContactId($row, 'vendor');
+        $row['currency_code'] = $this->getCurrencyCode($row);
+        $row['type'] = Model::BILL_RECURRING_TYPE;
+        $row['contact_country'] = !empty($country) ? $country : null;
+
+        return $row;
+    }
+
+    public function prepareRules(array $rules): array
+    {
+        $rules['bill_number'] = Str::replaceFirst('unique:documents,NULL', 'unique:documents,document_number', $rules['document_number']);
+        $rules['billed_at'] = $rules['issued_at'];
+        $rules['currency_rate'] = 'required|gt:0';
+
+        unset($rules['document_number'], $rules['issued_at'], $rules['type']);
+
+        return $rules;
     }
 }

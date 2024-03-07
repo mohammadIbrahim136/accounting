@@ -1,28 +1,53 @@
 <?php
 
-namespace App\Exports\Banking;
+namespace App\Exports\Banking\Sheets;
 
-use App\Exports\Banking\Sheets\Recurring;
-use App\Exports\Banking\Sheets\RecurringTransactions as Base;
-use Maatwebsite\Excel\Concerns\Exportable;
-use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use App\Abstracts\Export;
+use App\Models\Banking\Transaction as Model;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class RecurringTransactions implements WithMultipleSheets
+class RecurringTransactions extends Export implements WithColumnFormatting
 {
-    use Exportable;
-
-    public $ids;
-
-    public function __construct($ids = null)
+    public function collection()
     {
-        $this->ids = $ids;
+        return Model::with('account', 'category', 'contact', 'document')->isRecurring()->cursor();
     }
 
-    public function sheets(): array
+    public function map($model): array
+    {
+        $model->account_name = $model->account->name;
+        $model->contact_email = $model->contact->email;
+        $model->category_name = $model->category->name;
+        $model->invoice_bill_number = $model->document->document_number ?? 0;
+
+        return parent::map($model);
+    }
+
+    public function fields(): array
     {
         return [
-            new Recurring($this->ids),
-            new Base($this->ids),
+            'type',
+            'number',
+            'paid_at',
+            'amount',
+            'currency_code',
+            'currency_rate',
+            'account_name',
+            'invoice_bill_number',
+            'contact_email',
+            'category_name',
+            'description',
+            'payment_method',
+            'reference',
+            'reconciled',
+        ];
+    }
+
+    public function columnFormats(): array
+    {
+        return [
+            'C' => NumberFormat::FORMAT_DATE_YYYYMMDD,
         ];
     }
 }
